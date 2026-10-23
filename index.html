@@ -86,7 +86,7 @@ const sg=v=>v>0?'pos':v<0?'neg':'';
 
 /* ---- quotes ---- */
 const PX=[u=>u,u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)];
-let pi=0,err='';
+let pi=0,err='',cerr='';
 const tmo=ms=>{const c=new AbortController();setTimeout(()=>c.abort(),ms);return c.signal};
 async function getJSON(url){
   for(let k=0;k<PX.length;k++){const i=(pi+k)%PX.length;
@@ -99,15 +99,17 @@ async function quote(y){
 }
 async function cloudQuote(){
   const r=await fetch(SY.url+'?token='+encodeURIComponent(SY.token||'')+'&action=quote&syms='+encodeURIComponent(S.as.map(a=>a.y).join(',')),{signal:tmo(25000)});
-  const j=await r.json();if(j.error)throw new Error(j.error);return j;
+  const j=await r.json();if(j.error)throw new Error(j.error);
+  if(!j.q)throw new Error('部署的 Apps Script 不是新版，請在管理部署作業選新版本');return j;
 }
 async function refresh(){
-  if(busy)return;busy=true;err='';S.msg='更新中…';head();
+  if(busy)return;busy=true;err='';cerr=SY.url?'':'尚未在設定頁連接 Google Sheet';S.msg='更新中…';head();
   const fail=[],ok=new Set(),bad=s=>{if(!(S.q[s]&&S.q[s].src=='sheet'))fail.push(s)};
   if(SY.url){
     try{const j=await cloudQuote();if(j.rates&&j.rates.TWD)S.rates=j.rates;
       S.as.forEach(a=>{const x=(j.q||{})[a.y];if(x&&x.p>0){S.q[a.s]={p:x.p,c:x.c};ok.add(a.s)}})}
-    catch(e){err='雲端報價 '+((e&&e.name)||'')+' '+((e&&e.message)||'')}
+    catch(e){cerr=((e&&e.name)||'')+' '+((e&&e.message)||'')}
+    if(!ok.size&&!cerr)cerr='Apps Script 回傳的報價是空的';
   }
   if(!ok.size){
     try{const j=await getJSON('https://open.er-api.com/v6/latest/USD');if(j.rates&&j.rates.TWD)S.rates=j.rates}
@@ -148,7 +150,7 @@ function head(){
   <div class="big">${M(t)}</div><div class="sub">約 ${M2(t)}，匯率 ${n(rate(),3)}${S.man?'（手動）':''}</div>
   <div class="bar">${S.as.map((a,i)=>val(a)>0?`<i style="width:${val(a)/T*100}%;background:${COL[i%8]}"></i>`:'').join('')}</div>
   <div class="leg">${S.as.map((a,i)=>val(a)>0?`<span><b style="background:${COL[i%8]}"></b>${a.s} ${pc(val(a)/T)}</span>`:'').join('')}</div>
-  <div class="top"><span class="mut">${S.msg||(S.ts?'更新於 '+new Date(S.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'尚未更新報價')}${SY.url&&cl?'<br>'+cl:''}${S.fail&&S.fail.length?`<br><span class="neg">未取得報價：${S.fail.join('、')}${err?'<small>'+err+'</small>':''}</span>`:''}</span><button class="chip on" data-a="rf">更新報價</button></div>`;
+  <div class="top"><span class="mut">${S.msg||(S.ts?'更新於 '+new Date(S.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'尚未更新報價')}${SY.url&&cl?'<br>'+cl:''}${S.fail&&S.fail.length?`<br><span class="neg">未取得報價：${S.fail.join('、')}${cerr?'<small>雲端報價：'+cerr+'</small>':''}${err?'<small>瀏覽器直連：'+err+'</small>':''}</span>`:''}</span><button class="chip on" data-a="rf">更新報價</button></div>`;
 }
 function ov(){
   const t=net()||1;
@@ -183,7 +185,7 @@ function rr(){
   <p class="mut">實際金額：正數代表需再投入，負數代表可提出，約 ${M2(sum)}。股數以整股計算（無條件捨去）。</p>${Math.abs(ts-100)>.01?`<p class="warn">目標比例合計為 ${n(ts,1)}%，不是 100%。</p>`:''}</div>`;
 }
 function set(){
-  return `<div class="card"><h3>Google Sheet 後台</h3><p class="mut" style="margin-top:0">貼上 Apps Script 網頁應用程式網址與密碼，資料會自動存進你的 Sheet，版面與原本的試算表相同（含公式），也可以直接在 Sheet 裡修改後重新載入。手動匯率只存在本機。</p><input class="in" style="text-align:left" id="su" placeholder="https://script.google.com/macros/s/…/exec" value="${SY.url||''}"><input class="in" style="text-align:left;margin-top:8px" id="st" placeholder="密碼" value="${SY.token||''}"><div class="ln"><button class="chip on" data-a="ssave">儲存並載入</button><button class="chip" data-a="spush">立即寫入 Sheet</button></div><p class="mut" style="margin-bottom:0">${cl}</p></div>
+  return `<div class="card"><h3>Google Sheet 後台</h3><p class="mut" style="margin-top:0">貼上 Apps Script 網頁應用程式網址與密碼，資料會自動存進你的 Sheet，第一個分頁是計算區塊（含公式），第二個分頁是各帳戶持股矩陣，也可以直接在 Sheet 裡修改後重新載入。手動匯率只存在本機。</p><input class="in" style="text-align:left" id="su" placeholder="https://script.google.com/macros/s/…/exec" value="${SY.url||''}"><input class="in" style="text-align:left;margin-top:8px" id="st" placeholder="密碼" value="${SY.token||''}"><div class="ln"><button class="chip on" data-a="ssave">儲存並載入</button><button class="chip" data-a="spush">立即寫入 Sheet</button></div><p class="mut" style="margin-bottom:0">${cl}</p></div>
   <div class="card"><h3>標的與報價代號</h3><p class="mut" style="margin-top:0">使用 Yahoo Finance 代號，例如 VWRA.L、0050.TW。</p>${S.as.map((a,i)=>`<div class="ln"><b>${a.s}</b><input class="in" data-y="${i}" value="${a.y}"><button class="x" data-a="del" data-i="${i}">刪除</button></div>`).join('')}
   <div class="ln"><input class="in" id="ns" placeholder="名稱"><input class="in" id="ny" placeholder="Yahoo 代號"><button class="chip on" data-a="add">新增</button></div></div>
   <div class="card"><h3>帳戶</h3><div class="ln" style="flex-wrap:wrap">${S.acc.map(c=>`<button class="x" data-a="dac" data-c="${c}">${c} ✕</button>`).join('')}</div><div class="ln"><input class="in" id="nc" placeholder="新帳戶名稱"><button class="chip on" data-a="aac">新增</button></div></div>
