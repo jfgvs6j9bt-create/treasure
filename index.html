@@ -108,7 +108,7 @@ async function refresh(){
 /* ---- Google Sheet sync ---- */
 let SY={},synced=false,last='',tm=0,cl='';
 try{SY=JSON.parse(localStorage.getItem('rb1sync'))||{}}catch(e){}
-const pack=()=>JSON.stringify({acc:S.acc,as:S.as.map(a=>({s:a.s,y:a.y,t:a.t,h:a.h})),inj:S.inj||0,man:S.man||0});
+const pack=()=>JSON.stringify({acc:S.acc,as:S.as.map(a=>({s:a.s,g:a.g,y:a.y,t:a.t,h:a.h})),inj:S.inj||0});
 function sched(){if(!SY.url||!synced)return;clearTimeout(tm);tm=setTimeout(push,1500)}
 async function push(){
   const d=pack();if(d===last)return;cl='寫入中…';head();
@@ -121,7 +121,7 @@ async function pull(){
   if(!SY.url)return;cl='載入中…';head();
   try{const r=await fetch(SY.url+(SY.url.includes('?')?'&':'?')+'token='+encodeURIComponent(SY.token||''));
     const j=await r.json();if(j.error)throw 0;
-    if(j.as&&j.as.length){Object.assign(S,{acc:j.acc,as:j.as,inj:j.inj||0,man:j.man||0});last=pack();cl='已從 Google Sheet 載入'}
+    if(j.as&&j.as.length){Object.assign(S,{acc:j.acc,as:j.as,inj:j.inj||0});last=pack();cl='已從 Google Sheet 載入'}
     synced=true;if(!(j.as&&j.as.length))await push();
   }catch(e){cl='無法連線 Google Sheet，目前只存在本機'}
   save();draw();
@@ -169,7 +169,7 @@ function rr(){
   <p class="mut">實際金額：正數代表需再投入，負數代表可提出，約 ${M2(sum)}。股數以整股計算（無條件捨去）。</p>${Math.abs(ts-100)>.01?`<p class="warn">目標比例合計為 ${n(ts,1)}%，不是 100%。</p>`:''}</div>`;
 }
 function set(){
-  return `<div class="card"><h3>Google Sheet 後台</h3><p class="mut" style="margin-top:0">貼上 Apps Script 網頁應用程式網址與密碼，資料會自動存進你的 Sheet，也可以直接在 Sheet 裡修改後重新載入。</p><input class="in" style="text-align:left" id="su" placeholder="https://script.google.com/macros/s/…/exec" value="${SY.url||''}"><input class="in" style="text-align:left;margin-top:8px" id="st" placeholder="密碼" value="${SY.token||''}"><div class="ln"><button class="chip on" data-a="ssave">儲存並載入</button><button class="chip" data-a="spush">立即寫入 Sheet</button></div><p class="mut" style="margin-bottom:0">${cl}</p></div>
+  return `<div class="card"><h3>Google Sheet 後台</h3><p class="mut" style="margin-top:0">貼上 Apps Script 網頁應用程式網址與密碼，資料會自動存進你的 Sheet，版面與原本的試算表相同（含公式），也可以直接在 Sheet 裡修改後重新載入。手動匯率只存在本機。</p><input class="in" style="text-align:left" id="su" placeholder="https://script.google.com/macros/s/…/exec" value="${SY.url||''}"><input class="in" style="text-align:left;margin-top:8px" id="st" placeholder="密碼" value="${SY.token||''}"><div class="ln"><button class="chip on" data-a="ssave">儲存並載入</button><button class="chip" data-a="spush">立即寫入 Sheet</button></div><p class="mut" style="margin-bottom:0">${cl}</p></div>
   <div class="card"><h3>標的與報價代號</h3><p class="mut" style="margin-top:0">使用 Yahoo Finance 代號，例如 VWRA.L、0050.TW。</p>${S.as.map((a,i)=>`<div class="ln"><b>${a.s}</b><input class="in" data-y="${i}" value="${a.y}"><button class="x" data-a="del" data-i="${i}">刪除</button></div>`).join('')}
   <div class="ln"><input class="in" id="ns" placeholder="名稱"><input class="in" id="ny" placeholder="Yahoo 代號"><button class="chip on" data-a="add">新增</button></div></div>
   <div class="card"><h3>帳戶</h3><div class="ln" style="flex-wrap:wrap">${S.acc.map(c=>`<button class="x" data-a="dac" data-c="${c}">${c} ✕</button>`).join('')}</div><div class="ln"><input class="in" id="nc" placeholder="新帳戶名稱"><button class="chip on" data-a="aac">新增</button></div></div>
