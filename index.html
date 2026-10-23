@@ -97,12 +97,24 @@ async function quote(y){
   const j=await getJSON('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(y)+'?interval=1d&range=1d');
   const m=j.chart.result[0].meta;return{p:m.regularMarketPrice,c:m.currency};
 }
+async function cloudQuote(){
+  const r=await fetch(SY.url+'?token='+encodeURIComponent(SY.token||'')+'&action=quote&syms='+encodeURIComponent(S.as.map(a=>a.y).join(',')),{signal:tmo(25000)});
+  const j=await r.json();if(j.error)throw new Error(j.error);return j;
+}
 async function refresh(){
-  if(busy)return;busy=true;S.msg='更新中…';head();
-  try{const j=await getJSON('https://open.er-api.com/v6/latest/USD');if(j.rates&&j.rates.TWD)S.rates=j.rates}
-  catch(e){try{S.rates.TWD=(await quote('TWD=X')).p}catch(e2){}}
-  const fail=[],bad=s=>{if(!(S.q[s]&&S.q[s].src=='sheet'))fail.push(s)};
-  await Promise.all(S.as.map(async a=>{try{const r=await quote(a.y);if(r.p>0)S.q[a.s]={p:r.p,c:r.c};else bad(a.s)}catch(e){bad(a.s)}}));
+  if(busy)return;busy=true;err='';S.msg='更新中…';head();
+  const fail=[],ok=new Set(),bad=s=>{if(!(S.q[s]&&S.q[s].src=='sheet'))fail.push(s)};
+  if(SY.url){
+    try{const j=await cloudQuote();if(j.rates&&j.rates.TWD)S.rates=j.rates;
+      S.as.forEach(a=>{const x=(j.q||{})[a.y];if(x&&x.p>0){S.q[a.s]={p:x.p,c:x.c};ok.add(a.s)}})}
+    catch(e){err='雲端報價 '+((e&&e.name)||'')+' '+((e&&e.message)||'')}
+  }
+  if(!ok.size){
+    try{const j=await getJSON('https://open.er-api.com/v6/latest/USD');if(j.rates&&j.rates.TWD)S.rates=j.rates}
+    catch(e){try{S.rates.TWD=(await quote('TWD=X')).p}catch(e2){}}
+  }
+  await Promise.all(S.as.filter(a=>!ok.has(a.s)).map(async a=>{
+    try{const r=await quote(a.y);if(r.p>0)S.q[a.s]={p:r.p,c:r.c};else bad(a.s)}catch(e){bad(a.s)}}));
   S.fail=fail;S.ts=Date.now();S.msg='';busy=false;save();draw();
 }
 
