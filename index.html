@@ -85,11 +85,12 @@ const M2=u=>S.view=='USD'?'NT$'+n(u*rate()):'$'+n(u);
 const sg=v=>v>0?'pos':v<0?'neg':'';
 
 /* ---- quotes ---- */
-const PX=[u=>u,u=>'https://corsproxy.io/?'+encodeURIComponent(u),u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)];
-let pi=0;
+const PX=[u=>u,u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)];
+let pi=0,err='';
+const tmo=ms=>{const c=new AbortController();setTimeout(()=>c.abort(),ms);return c.signal};
 async function getJSON(url){
   for(let k=0;k<PX.length;k++){const i=(pi+k)%PX.length;
-    try{const r=await fetch(PX[i](url),{cache:'no-store',signal:AbortSignal.timeout(7000)});if(r.ok){pi=i;return await r.json()}}catch(e){}}
+    try{const r=await fetch(PX[i](url),{cache:'no-store',signal:tmo(5000)});if(r.ok){pi=i;return await r.json()}err='HTTP '+r.status}catch(e){err=((e&&e.name)||'')+' '+((e&&e.message)||'')}}
   throw new Error('fetch');
 }
 async function quote(y){
@@ -100,8 +101,8 @@ async function refresh(){
   if(busy)return;busy=true;S.msg='更新中…';head();
   try{const j=await getJSON('https://open.er-api.com/v6/latest/USD');if(j.rates&&j.rates.TWD)S.rates=j.rates}
   catch(e){try{S.rates.TWD=(await quote('TWD=X')).p}catch(e2){}}
-  const fail=[];
-  await Promise.all(S.as.map(async a=>{try{const r=await quote(a.y);if(r.p>0)S.q[a.s]={p:r.p,c:r.c};else fail.push(a.s)}catch(e){fail.push(a.s)}}));
+  const fail=[],bad=s=>{if(!(S.q[s]&&S.q[s].src=='sheet'))fail.push(s)};
+  await Promise.all(S.as.map(async a=>{try{const r=await quote(a.y);if(r.p>0)S.q[a.s]={p:r.p,c:r.c};else bad(a.s)}catch(e){bad(a.s)}}));
   S.fail=fail;S.ts=Date.now();S.msg='';busy=false;save();draw();
 }
 
@@ -119,11 +120,12 @@ async function push(){
 }
 async function pull(){
   if(!SY.url)return;cl='載入中…';head();
-  try{const r=await fetch(SY.url+(SY.url.includes('?')?'&':'?')+'token='+encodeURIComponent(SY.token||''));
+  try{const r=await fetch(SY.url+(SY.url.includes('?')?'&':'?')+'token='+encodeURIComponent(SY.token||''),{signal:tmo(20000)});
     const j=await r.json();if(j.error)throw 0;
     if(j.as&&j.as.length){Object.assign(S,{acc:j.acc,as:j.as,inj:j.inj||0});last=pack();cl='已從 Google Sheet 載入'}
+    if(j.fx>0)S.rates.TWD=j.fx;(j.as||[]).forEach(a=>{if(a.p>0)S.q[a.s]={p:a.p,c:'USD',src:'sheet'}});
     synced=true;if(!(j.as&&j.as.length))await push();
-  }catch(e){cl='無法連線 Google Sheet，目前只存在本機'}
+  }catch(e){cl='無法連線 Google Sheet（'+((e&&e.name)||'網址、密碼或存取權有誤')+'），目前只存在本機'}
   save();draw();
 }
 
@@ -134,7 +136,7 @@ function head(){
   <div class="big">${M(t)}</div><div class="sub">約 ${M2(t)}，匯率 ${n(rate(),3)}${S.man?'（手動）':''}</div>
   <div class="bar">${S.as.map((a,i)=>val(a)>0?`<i style="width:${val(a)/T*100}%;background:${COL[i%8]}"></i>`:'').join('')}</div>
   <div class="leg">${S.as.map((a,i)=>val(a)>0?`<span><b style="background:${COL[i%8]}"></b>${a.s} ${pc(val(a)/T)}</span>`:'').join('')}</div>
-  <div class="top"><span class="mut">${S.msg||(S.ts?'更新於 '+new Date(S.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'尚未更新報價')}${SY.url&&cl?'<br>'+cl:''}${S.fail&&S.fail.length?`<br><span class="neg">未取得報價：${S.fail.join('、')}</span>`:''}</span><button class="chip on" data-a="rf">更新報價</button></div>`;
+  <div class="top"><span class="mut">${S.msg||(S.ts?'更新於 '+new Date(S.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'尚未更新報價')}${SY.url&&cl?'<br>'+cl:''}${S.fail&&S.fail.length?`<br><span class="neg">未取得報價：${S.fail.join('、')}${err?'<small>'+err+'</small>':''}</span>`:''}</span><button class="chip on" data-a="rf">更新報價</button></div>`;
 }
 function ov(){
   const t=net()||1;
