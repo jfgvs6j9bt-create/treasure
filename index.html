@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="再平衡">
+<title>再平衡試算</title>
+<style>
+:root{--bg:#f1f3f5;--card:#fff;--ink:#101820;--mut:#64707b;--line:#dbe0e5;--acc:#1d4ed8;--pos:#0d7a4f;--neg:#c0392b}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1218;--card:#161d25;--ink:#e8edf2;--mut:#8b97a3;--line:#26303a;--acc:#7aa2ff;--pos:#4cc38a;--neg:#ff8a7a}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-variant-numeric:tabular-nums;padding:env(safe-area-inset-top) 0 calc(66px + env(safe-area-inset-bottom))}
+.w{max-width:900px;margin:0 auto;padding:0 14px}
+header{padding:18px 2px 4px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0}
+.lbl,.mut{color:var(--mut);font-size:13px}
+.big{font-size:40px;font-weight:700;letter-spacing:-.025em;line-height:1.1;margin-top:2px}
+.sub{color:var(--mut);margin:2px 0 10px}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;margin:6px 0 4px}
+.bar i{display:block;min-width:2px}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--mut);margin-bottom:6px}
+.leg b{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+h3{margin:0 0 10px;font-size:15px}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.ac{display:block;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;color:var(--mut)}
+.ac b{display:block;font-size:17px;color:var(--ink)}
+.sc{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+th{color:var(--mut);font-weight:500;font-size:12px}
+small{display:block;color:var(--mut);font-size:11px}
+.in{width:100%;min-width:88px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;text-align:right}
+.in:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.chip,.x{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+.ft td{font-weight:600}
+.warn{color:var(--neg);font-size:13px;margin:8px 0 0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;color:var(--mut);padding:14px 0;font:inherit;font-size:14px;cursor:pointer}
+nav button.on{color:var(--acc);font-weight:700}
+.ln{display:flex;gap:8px;align-items:center;margin:8px 0}.ln b{min-width:64px}.ln .in{text-align:left}
+.pi{display:flex;align-items:center;gap:4px;margin-top:4px}
+textarea{width:100%;height:80px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:12px monospace;margin:8px 0}
+</style>
+</head>
+<body>
+<div class="w"><header id="hd"></header><main id="mn"></main></div>
+<nav id="nv"></nav>
+<script>
+const DEF={acc:['嘉信','IB','FT','富邦','永豐','台新'],inj:0,view:'USD',man:0,ts:0,fail:[],rates:{TWD:32.596,GBP:0.75},
+q:{VT:{u:156.52},VWRA:{u:190.49},VGIT:{u:57.45},AGGU:{u:5.79},'006208':{u:7.51},'0050':{u:3.28},'009826':{u:0.311},VALU:{u:4.89}},
+as:[
+{s:'VT',y:'VT',t:20,h:{嘉信:108.9415,永豐:759.57614}},
+{s:'VWRA',y:'VWRA.L',t:20,h:{IB:453.3379,富邦:545}},
+{s:'VGIT',y:'VGIT',t:0,h:{嘉信:11.2966,IB:104.9159}},
+{s:'AGGU',y:'AGGU.L',t:0,h:{IB:731,富邦:490}},
+{s:'006208',y:'006208.TW',t:10,h:{永豐:10593}},
+{s:'0050',y:'0050.TW',t:10,h:{永豐:3143,台新:7367}},
+{s:'009826',y:'009826.TW',t:20,h:{永豐:3960}},
+{s:'VALU',y:'VALU.L',t:20,h:{IB:623.0307,富邦:637}}]};
+const $=s=>document.querySelector(s),COL=['#1d4ed8','#0ea5a4','#d97706','#7c3aed','#db2777','#65a30d','#0891b2','#a16207'];
+const clone=o=>JSON.parse(JSON.stringify(o));
+let S=(()=>{try{const j=JSON.parse(localStorage.getItem('rb1'));if(j&&j.as&&j.acc)return j}catch(e){}return clone(DEF)})(),tab='ov',busy=false;
+const save=()=>{try{localStorage.setItem('rb1',JSON.stringify(S))}catch(e){}sched()};
+const n=(v,d=0)=>(+v||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pc=v=>(v*100).toFixed(1)+'%';
+const rate=()=>+S.man||S.rates.TWD;
+const toUSD=(p,c)=>c=='USD'?p:(c=='GBp'||c=='GBX')?p/100/S.rates.GBP:p/(c=='TWD'?rate():(S.rates[c]||1));
+const price=a=>{const q=S.q[a.s]||{};return q.p?toUSD(q.p,q.c):(q.u||0)};
+const sh=a=>Object.values(a.h).reduce((x,y)=>x+(+y||0),0);
+const val=a=>sh(a)*price(a);
+const net=()=>S.as.reduce((x,a)=>x+val(a),0);
+const accVal=c=>S.as.reduce((x,a)=>x+(+a.h[c]||0)*price(a),0);
+const M=u=>S.view=='USD'?'$'+n(u):'NT$'+n(u*rate());
+const M2=u=>S.view=='USD'?'NT$'+n(u*rate()):'$'+n(u);
+const sg=v=>v>0?'pos':v<0?'neg':'';
+
+/* ---- quotes ---- */
+const PX=[u=>u,u=>'https://corsproxy.io/?'+encodeURIComponent(u),u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)];
+let pi=0;
+async function getJSON(url){
+  for(let k=0;k<PX.length;k++){const i=(pi+k)%PX.length;
+    try{const r=await fetch(PX[i](url),{cache:'no-store',signal:AbortSignal.timeout(7000)});if(r.ok){pi=i;return await r.json()}}catch(e){}}
+  throw new Error('fetch');
+}
+async function quote(y){
+  const j=await getJSON('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(y)+'?interval=1d&range=1d');
+  const m=j.chart.result[0].meta;return{p:m.regularMarketPrice,c:m.currency};
+}
+async function refresh(){
+  if(busy)return;busy=true;S.msg='更新中…';head();
+  try{const j=await getJSON('https://open.er-api.com/v6/latest/USD');if(j.rates&&j.rates.TWD)S.rates=j.rates}
+  catch(e){try{S.rates.TWD=(await quote('TWD=X')).p}catch(e2){}}
+  const fail=[];
+  await Promise.all(S.as.map(async a=>{try{const r=await quote(a.y);if(r.p>0)S.q[a.s]={p:r.p,c:r.c};else fail.push(a.s)}catch(e){fail.push(a.s)}}));
+  S.fail=fail;S.ts=Date.now();S.msg='';busy=false;save();draw();
+}
+
+/* ---- Google Sheet sync ---- */
+let SY={},synced=false,last='',tm=0,cl='';
+try{SY=JSON.parse(localStorage.getItem('rb1sync'))||{}}catch(e){}
+const pack=()=>JSON.stringify({acc:S.acc,as:S.as.map(a=>({s:a.s,y:a.y,t:a.t,h:a.h})),inj:S.inj||0,man:S.man||0});
+function sched(){if(!SY.url||!synced)return;clearTimeout(tm);tm=setTimeout(push,1500)}
+async function push(){
+  const d=pack();if(d===last)return;cl='寫入中…';head();
+  try{const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:SY.token,data:JSON.parse(d)})});
+    const j=await r.json();if(j.error)throw 0;last=d;cl='已同步到 Google Sheet'}
+  catch(e){cl='同步失敗，請檢查網址與密碼'}
+  head();
+}
+async function pull(){
+  if(!SY.url)return;cl='載入中…';head();
+  try{const r=await fetch(SY.url+(SY.url.includes('?')?'&':'?')+'token='+encodeURIComponent(SY.token||''));
+    const j=await r.json();if(j.error)throw 0;
+    if(j.as&&j.as.length){Object.assign(S,{acc:j.acc,as:j.as,inj:j.inj||0,man:j.man||0});last=pack();cl='已從 Google Sheet 載入'}
+    synced=true;if(!(j.as&&j.as.length))await push();
+  }catch(e){cl='無法連線 Google Sheet，目前只存在本機'}
+  save();draw();
+}
+
+/* ---- views ---- */
+function head(){
+  const t=net(),T=t||1;
+  $('#hd').innerHTML=`<div class="top"><span class="lbl">目前淨值</span><button class="chip" data-a="view">顯示 ${S.view}</button></div>
+  <div class="big">${M(t)}</div><div class="sub">約 ${M2(t)}，匯率 ${n(rate(),3)}${S.man?'（手動）':''}</div>
+  <div class="bar">${S.as.map((a,i)=>val(a)>0?`<i style="width:${val(a)/T*100}%;background:${COL[i%8]}"></i>`:'').join('')}</div>
+  <div class="leg">${S.as.map((a,i)=>val(a)>0?`<span><b style="background:${COL[i%8]}"></b>${a.s} ${pc(val(a)/T)}</span>`:'').join('')}</div>
+  <div class="top"><span class="mut">${S.msg||(S.ts?'更新於 '+new Date(S.ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'尚未更新報價')}${SY.url&&cl?'<br>'+cl:''}${S.fail&&S.fail.length?`<br><span class="neg">未取得報價：${S.fail.join('、')}</span>`:''}</span><button class="chip on" data-a="rf">更新報價</button></div>`;
+}
+function ov(){
+  const t=net()||1;
+  return `<div class="card"><h3>各帳戶</h3><div class="g">${S.acc.map(c=>{const v=accVal(c);return `<div class="ac">${c}<b>${M(v)}</b>${M2(v)}，占 ${pc(v/t)}</div>`}).join('')}</div></div>
+  <div class="card"><h3>合併持股</h3><div class="sc"><table><tr><th>標的<th>現價 (USD)<th>總股數<th>市值<th>占比<th>目標</tr>${S.as.map(a=>{
+    const q=S.q[a.s]||{},u=price(a),v=val(a);
+    return `<tr><td>${a.s}<td>${n(u,u<1?3:2)}${q.c&&q.c!='USD'?`<small>${n(q.p,2)} ${q.c}</small>`:''}<td>${n(sh(a),2)}<td>${M(v)}<td>${pc(v/t)}<td>${n(a.t,1)}%`}).join('')}</table></div></div>`;
+}
+function hold(){
+  return `<div class="card"><h3>各帳戶持股數</h3><p class="mut" style="margin-top:0">輸入股數後，淨值與各帳戶合計會即時更新。</p><div class="sc"><table><tr><th>標的${S.acc.map(c=>`<th>${c}`).join('')}<th>合計股數</tr>${S.as.map((a,i)=>`<tr><td>${a.s}${S.acc.map(c=>`<td><input class="in" type="number" step="any" inputmode="decimal" data-i="${i}" data-c="${c}" value="${a.h[c]||''}">`).join('')}<td id="ts${i}">${n(sh(a),2)}`).join('')}<tr class="ft"><td>帳戶合計${S.acc.map((c,j)=>`<td id="ta${j}">${M(accVal(c))}`).join('')}<td id="tt">${M(net())}</tr></table></div></div>
+  <div class="card"><h3>新增標的</h3><p class="mut" style="margin-top:0">新增後在上方表格填各帳戶股數，目標比例到「再平衡」頁設定。</p><div class="ln"><input class="in" id="ns" placeholder="名稱，例如 QQQ"><input class="in" id="ny" placeholder="Yahoo 代號"><button class="chip on" data-a="add">新增</button></div></div>`;
+}
+function updHold(){
+  S.as.forEach((a,i)=>{const e=$('#ts'+i);if(e)e.textContent=n(sh(a),2)});
+  S.acc.forEach((c,j)=>{const e=$('#ta'+j);if(e)e.textContent=M(accVal(c))});
+  const e=$('#tt');if(e)e.textContent=M(net());
+}
+function calc(){
+  const V=net()+(+S.inj||0);
+  const rows=S.as.map(a=>{const p=price(a),v=val(a),tv=V*a.t/100,q=p?Math.trunc((tv-v)/p):0;return{a,p,v,tv,q,amt:q*p,after:v+q*p}});
+  const sa=rows.reduce((x,r)=>x+r.after,0)||1;rows.forEach(r=>r.pct=r.after/sa);
+  return{rows,sum:rows.reduce((x,r)=>x+r.amt,0)};
+}
+function rb(){
+  return `<div class="card"><h3>目標配置</h3><div class="g">${S.as.map((a,i)=>`<label class="ac">${a.s}<span class="pi"><input class="in" type="number" step="any" data-t="${i}" value="${a.t}">%</span></label>`).join('')}</div>
+  <label class="ac" style="margin-top:10px">投入（正數）或提領（負數）金額，單位 USD<input class="in" type="number" step="any" id="inj" value="${S.inj||''}" placeholder="0"></label></div><div id="rr"></div>`;
+}
+function rr(){
+  const el=$('#rr');if(!el)return;
+  const{rows,sum}=calc(),ts=S.as.reduce((x,a)=>x+(+a.t||0),0),t=net()||1;
+  el.innerHTML=`<div class="card"><h3>再平衡建議</h3><div class="sc"><table><tr><th>標的<th>現占比<th>目標市值<th>買賣股數<th>買賣金額<th>調整後占比</tr>${rows.map(r=>`<tr><td>${r.a.s}<td>${pc(r.v/t)}<td>${M(r.tv)}<td class="${sg(r.q)}">${r.q>0?'買 ':r.q<0?'賣 ':''}${n(Math.abs(r.q))}<td class="${sg(r.amt)}">${M(r.amt)}<td>${pc(r.pct)}`).join('')}<tr class="ft"><td>再平衡實際金額<td><td><td><td class="${sg(sum)}">${M(sum)}<td></tr></table></div>
+  <p class="mut">實際金額：正數代表需再投入，負數代表可提出，約 ${M2(sum)}。股數以整股計算（無條件捨去）。</p>${Math.abs(ts-100)>.01?`<p class="warn">目標比例合計為 ${n(ts,1)}%，不是 100%。</p>`:''}</div>`;
+}
+function set(){
+  return `<div class="card"><h3>Google Sheet 後台</h3><p class="mut" style="margin-top:0">貼上 Apps Script 網頁應用程式網址與密碼，資料會自動存進你的 Sheet，也可以直接在 Sheet 裡修改後重新載入。</p><input class="in" style="text-align:left" id="su" placeholder="https://script.google.com/macros/s/…/exec" value="${SY.url||''}"><input class="in" style="text-align:left;margin-top:8px" id="st" placeholder="密碼" value="${SY.token||''}"><div class="ln"><button class="chip on" data-a="ssave">儲存並載入</button><button class="chip" data-a="spush">立即寫入 Sheet</button></div><p class="mut" style="margin-bottom:0">${cl}</p></div>
+  <div class="card"><h3>標的與報價代號</h3><p class="mut" style="margin-top:0">使用 Yahoo Finance 代號，例如 VWRA.L、0050.TW。</p>${S.as.map((a,i)=>`<div class="ln"><b>${a.s}</b><input class="in" data-y="${i}" value="${a.y}"><button class="x" data-a="del" data-i="${i}">刪除</button></div>`).join('')}
+  <div class="ln"><input class="in" id="ns" placeholder="名稱"><input class="in" id="ny" placeholder="Yahoo 代號"><button class="chip on" data-a="add">新增</button></div></div>
+  <div class="card"><h3>帳戶</h3><div class="ln" style="flex-wrap:wrap">${S.acc.map(c=>`<button class="x" data-a="dac" data-c="${c}">${c} ✕</button>`).join('')}</div><div class="ln"><input class="in" id="nc" placeholder="新帳戶名稱"><button class="chip on" data-a="aac">新增</button></div></div>
+  <div class="card"><h3>匯率</h3><p class="mut" style="margin-top:0">目前自動匯率 ${n(S.rates.TWD,3)}。需要時可手動指定（USD 兌 TWD），留空則用自動匯率。</p><input class="in" type="number" step="any" id="man" value="${S.man||''}" placeholder="自動"></div>
+  <div class="card"><h3>資料備份</h3><textarea id="bk" placeholder="匯出後會顯示在這裡；貼上備份內容再按匯入"></textarea><div class="ln"><button class="chip" data-a="exp">匯出</button><button class="chip" data-a="imp">匯入</button><button class="x" data-a="rst">重設</button></div></div>`;
+}
+const V={ov,hold,rb,set};
+function draw(){
+  head();
+  $('#nv').innerHTML=[['ov','總覽'],['hold','持股'],['rb','再平衡'],['set','設定']].map(([k,l])=>`<button data-tab="${k}" class="${tab==k?'on':''}">${l}</button>`).join('');
+  $('#mn').innerHTML=V[tab]();if(tab=='rb')rr();
+}
+
+/* ---- events ---- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a],[data-tab]');if(!b)return;
+  if(b.dataset.tab){tab=b.dataset.tab;draw();return}
+  const a=b.dataset.a,i=+b.dataset.i;
+  if(a=='view'){S.view=S.view=='USD'?'TWD':'USD';save();draw()}
+  else if(a=='rf')refresh();
+  else if(a=='del'){if(confirm('刪除 '+S.as[i].s+'？')){delete S.q[S.as[i].s];S.as.splice(i,1);save();draw()}}
+  else if(a=='add'){const s=$('#ns').value.trim(),y=$('#ny').value.trim()||s;if(s&&!S.as.some(x=>x.s==s)){S.as.push({s,y,t:0,h:{}});save();draw();refresh()}}
+  else if(a=='dac'){const c=b.dataset.c;if(confirm('刪除帳戶「'+c+'」及其持股？')){S.acc=S.acc.filter(x=>x!=c);S.as.forEach(x=>delete x.h[c]);save();draw()}}
+  else if(a=='aac'){const c=$('#nc').value.trim();if(c&&!S.acc.includes(c)){S.acc.push(c);save();draw()}}
+  else if(a=='ssave'){if(confirm('將以 Google Sheet 的內容覆蓋目前資料；若 Sheet 是空的，則會寫入目前資料。繼續？')){SY={url:$('#su').value.trim(),token:$('#st').value.trim()};try{localStorage.setItem('rb1sync',JSON.stringify(SY))}catch(x){}synced=false;pull().then(refresh)}}
+  else if(a=='spush'){last='';synced=true;push()}
+  else if(a=='exp')$('#bk').value=JSON.stringify(S);
+  else if(a=='imp'){try{const j=JSON.parse($('#bk').value);if(j.as&&j.acc){S=j;save();draw()}else throw 0}catch(x){alert('備份格式不正確')}}
+  else if(a=='rst'){if(confirm('重設為初始資料？目前輸入的股數會被覆蓋。')){S=clone(DEF);save();draw()}}
+});
+document.addEventListener('input',e=>{
+  const t=e.target,d=t.dataset;
+  if(d.c!==undefined&&d.i!==undefined){S.as[+d.i].h[d.c]=+t.value||0;save();head();updHold()}
+  else if(d.t!==undefined){S.as[+d.t].t=+t.value||0;save();rr()}
+  else if(t.id=='inj'){S.inj=+t.value||0;save();rr()}
+});
+document.addEventListener('change',e=>{
+  const t=e.target,d=t.dataset;
+  if(d.y!==undefined){S.as[+d.y].y=t.value.trim();save();refresh()}
+  else if(t.id=='man'){S.man=+t.value||0;save();draw()}
+});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-S.ts>3e5)refresh()});
+setInterval(()=>{if(!document.hidden&&Date.now()-S.ts>3e5)refresh()},6e4);
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+draw();(SY.url?pull().then(refresh):refresh());
+</script>
+</body>
+</html>
